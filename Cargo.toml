@@ -51,7 +51,12 @@ twox-hash = "1.0"
 hex = "0.4"
 
 [dev-dependencies]
-# Testing utilities as needed
+# Performance benchmarking
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "large_scale_benchmark"
+harness = false
 
 [patch.crates-io]
 trie-db = { path = "patches/trie-db" }

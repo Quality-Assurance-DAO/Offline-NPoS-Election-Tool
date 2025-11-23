@@ -8,4 +8,5 @@ pub mod multi_phase;
 pub use trait_def::ElectionAlgorithm;
 pub use sequential_phragmen::SequentialPhragmen;
 pub use parallel_phragmen::ParallelPhragmen;
+pub use multi_phase::MultiPhase;
 
