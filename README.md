@@ -59,6 +59,43 @@ offline-election run \
   --diagnostics
 ```
 
+### Start REST API Server
+
+```bash
+# Start server on default port 3000
+offline-election server
+
+# Start server on custom port
+offline-election server --port 8080
+```
+
+### Use All Three Algorithms
+
+**Via CLI:**
+```bash
+# Sequential Phragmen
+offline-election run --algorithm sequential-phragmen --active-set-size 100 --rpc-url https://rpc.polkadot.io
+
+# Parallel Phragmen
+offline-election run --algorithm parallel-phragmen --active-set-size 100 --rpc-url https://rpc.polkadot.io
+
+# Multi-phase
+offline-election run --algorithm multi-phase --active-set-size 100 --rpc-url https://rpc.polkadot.io
+```
+
+**Via REST API:**
+```bash
+# Start server first
+offline-election server
+
+# Then use curl or any HTTP client
+curl -X POST http://localhost:3000/elections/run \
+  -H "Content-Type: application/json" \
+  -d '{"algorithm": "sequential-phragmen", "active_set_size": 100, "data_source": {"type": "rpc", "url": "https://rpc.polkadot.io"}}'
+```
+
+See [API_USAGE.md](API_USAGE.md) for detailed API documentation and examples.
+
 ## Usage
 
 See the [Quickstart Guide](specs/001-offline-npos-election/quickstart.md) for detailed usage examples and documentation.

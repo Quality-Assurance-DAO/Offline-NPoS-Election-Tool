@@ -26,8 +26,23 @@ impl ElectionEngine {
         // Validate election data
         data.validate()?;
 
-        // Validate configuration against data
-        config.validate_against_data(data.candidates().len())?;
+        // Auto-adjust active set size if there are fewer candidates available
+        let candidate_count = data.candidates().len();
+        let effective_active_set_size = if config.active_set_size as usize > candidate_count {
+            eprintln!(
+                "Warning: Requested {} validators but only {} candidates available. Using {} instead.",
+                config.active_set_size,
+                candidate_count,
+                candidate_count
+            );
+            candidate_count as u32
+        } else {
+            config.active_set_size
+        };
+
+        // Create a modified config with the adjusted active set size
+        let mut adjusted_config = config.clone();
+        adjusted_config.active_set_size = effective_active_set_size;
 
         // Select algorithm based on configuration
         let algorithm: Box<dyn ElectionAlgorithm> = match config.algorithm {
@@ -42,11 +57,11 @@ impl ElectionEngine {
             self.apply_overrides(&mut modified_data, overrides)?;
         }
 
-        // Execute algorithm
-        let result = algorithm.execute(&modified_data, config)?;
+        // Execute algorithm with adjusted config
+        let result = algorithm.execute(&modified_data, &adjusted_config)?;
 
-        // Validate result
-        self.validate_result(&result, config)?;
+        // Validate result against adjusted config
+        self.validate_result(&result, &adjusted_config)?;
 
         Ok(result)
     }
