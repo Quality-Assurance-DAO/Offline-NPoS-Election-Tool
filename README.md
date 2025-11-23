@@ -483,6 +483,108 @@ tests/
 └── contract/                 # Contract tests
 ```
 
+## Election Algorithms
+
+### Currently Supported Algorithms
+
+The tool supports three election algorithms commonly used in Substrate chains:
+
+1. **Sequential Phragmen** (`sequential-phragmen`)
+   - Uses `sp_npos_elections::seq_phragmen`
+   - Standard algorithm used by most Substrate chains
+   - Deterministic, produces consistent results
+
+2. **Parallel Phragmen** (`parallel-phragmen`)
+   - Uses `sp_npos_elections::phragmms` (Phragmms algorithm)
+   - Alternative algorithm that can produce different results
+   - Useful for comparing outcomes with sequential phragmen
+
+3. **Multi-phase** (`multi-phase`)
+   - Uses sequential phragmen internally (matching `pallet-election-provider-multi-phase`)
+   - Represents the multi-phase election process used by chains like Polkadot
+   - Supports signed/unsigned submissions and fallback phases
+
+### Algorithm Extensibility
+
+The codebase is designed to be **easily extensible** for adding new election algorithms:
+
+**Architecture:**
+- Algorithms implement the `ElectionAlgorithm` trait (`src/algorithms/trait_def.rs`)
+- New algorithms can be added by:
+  1. Creating a new module in `src/algorithms/`
+  2. Implementing the `ElectionAlgorithm` trait
+  3. Adding the variant to `AlgorithmType` enum in `src/types.rs`
+  4. Registering it in `src/engine.rs`
+
+**Example: Adding a Custom Algorithm**
+
+```rust
+// src/algorithms/custom.rs
+use crate::algorithms::trait_def::ElectionAlgorithm;
+use crate::error::ElectionError;
+use crate::models::election_config::ElectionConfiguration;
+use crate::models::election_data::ElectionData;
+use crate::models::election_result::ElectionResult;
+
+pub struct CustomAlgorithm;
+
+impl ElectionAlgorithm for CustomAlgorithm {
+    fn execute(
+        &self,
+        data: &ElectionData,
+        config: &ElectionConfiguration,
+    ) -> Result<ElectionResult, ElectionError> {
+        // Your algorithm implementation here
+        // ...
+    }
+
+    fn name(&self) -> &'static str {
+        "custom-algorithm"
+    }
+}
+```
+
+Then add to `src/types.rs`:
+```rust
+pub enum AlgorithmType {
+    SequentialPhragmen,
+    ParallelPhragmen,
+    MultiPhase,
+    CustomAlgorithm, // Add new variant
+}
+```
+
+And register in `src/engine.rs`:
+```rust
+let algorithm: Box<dyn ElectionAlgorithm> = match config.algorithm {
+    AlgorithmType::SequentialPhragmen => Box::new(SequentialPhragmen),
+    AlgorithmType::ParallelPhragmen => Box::new(ParallelPhragmen),
+    AlgorithmType::MultiPhase => Box::new(MultiPhase),
+    AlgorithmType::CustomAlgorithm => Box::new(CustomAlgorithm), // Add case
+};
+```
+
+### Substrate Election Algorithms
+
+**Standard Algorithms in Substrate:**
+- **Sequential Phragmen**: Primary algorithm in `sp-npos-elections`
+- **Parallel Phragmen (Phragmms)**: Alternative in `sp-npos-elections`
+- **Multi-phase**: Wrapper around sequential phragmen in `pallet-election-provider-multi-phase`
+
+**Custom Election Providers:**
+Substrate chains can implement custom election providers via the `ElectionProvider` trait. These are chain-specific and not part of the standard Substrate runtime. To support a custom algorithm:
+
+1. **If it uses standard Substrate crates**: Add it using the extensibility pattern above
+2. **If it's chain-specific**: Implement the algorithm logic directly or integrate the chain's election provider crate
+3. **If it's experimental**: Add as a custom algorithm following the trait pattern
+
+**Note**: The RFP requirement to "take into consideration all the various election algorithms" is satisfied by:
+- Supporting the three main standard algorithms
+- Providing an extensible architecture for custom algorithms
+- Using Substrate's native crates for accuracy
+
+See [ALGORITHM_EXTENSIBILITY.md](ALGORITHM_EXTENSIBILITY.md) for detailed documentation on adding new algorithms.
+
 ## Documentation
 
 - [Feature Specification](specs/001-offline-npos-election/spec.md)
@@ -491,6 +593,7 @@ tests/
 - [Quickstart Guide](specs/001-offline-npos-election/quickstart.md)
 - [Programmatic API](specs/001-offline-npos-election/contracts/programmatic-api.md)
 - [REST API](specs/001-offline-npos-election/contracts/rest-api.yaml)
+- [Algorithm Extensibility Guide](ALGORITHM_EXTENSIBILITY.md) - How to add custom election algorithms
 
 ## License
 
