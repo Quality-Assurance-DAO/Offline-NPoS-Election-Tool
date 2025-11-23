@@ -1,4 +1,4 @@
-# API Server and Algorithm Usage Guide
+# REST API Documentation
 
 This guide provides comprehensive documentation for the REST API server, including:
 - Starting the API server
@@ -9,6 +9,14 @@ This guide provides comprehensive documentation for the REST API server, includi
 
 **Last Updated**: 2025-01-27  
 **Status**: Complete and up-to-date
+
+For programmatic library usage in Rust, see [Programmatic API Documentation](programmatic-api.md).
+
+**Related Documentation**:
+- [Programmatic API Documentation](programmatic-api.md) - Library API for Rust code
+- [Algorithm Guide](../guides/algorithms.md) - Understanding election algorithms
+- [RPC Usage Guide](../guides/rpc-usage.md) - Using RPC endpoints for data
+- [Testing Overview](../testing/overview.md) - Testing API endpoints
 
 ## Starting the API Server
 
@@ -879,7 +887,7 @@ Protect against memory exhaustion:
 # - Request size limits
 ```
 
-See the [Security and Robustness](../README.md#security-and-robustness) section in the main README for detailed recommendations.
+See the [Security and Robustness](../../README.md#security-and-robustness) section in the main README for detailed recommendations.
 
 ---
 
