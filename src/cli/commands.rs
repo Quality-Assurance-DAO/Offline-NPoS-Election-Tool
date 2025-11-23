@@ -48,6 +48,14 @@ pub struct RunCommand {
     /// Output format: json or human-readable
     #[arg(long, default_value = "json")]
     pub format: String,
+
+    /// Override candidate stake (format: account_id=stake, can be repeated)
+    #[arg(long, value_name = "ACCOUNT_ID=STAKE")]
+    pub override_candidate_stake: Vec<String>,
+
+    /// Override nominator stake (format: account_id=stake, can be repeated)
+    #[arg(long, value_name = "ACCOUNT_ID=STAKE")]
+    pub override_nominator_stake: Vec<String>,
 }
 
 impl RunCommand {
@@ -72,11 +80,30 @@ impl RunCommand {
             config = config.block_number(block);
         }
 
+        // Apply overrides if specified
+        if !self.override_candidate_stake.is_empty() || !self.override_nominator_stake.is_empty() {
+            let mut overrides = crate::models::election_overrides::ElectionOverrides::new();
+            
+            // Parse candidate stake overrides
+            for override_str in &self.override_candidate_stake {
+                let (account_id, stake) = self.parse_override(override_str, "candidate")?;
+                overrides.set_candidate_stake(account_id, stake)?;
+            }
+            
+            // Parse nominator stake overrides
+            for override_str in &self.override_nominator_stake {
+                let (account_id, stake) = self.parse_override(override_str, "nominator")?;
+                overrides.set_nominator_stake(account_id, stake)?;
+            }
+            
+            config = config.overrides(overrides);
+        }
+
         let config = config.build()?;
 
-        // Execute election
+        // Execute election with diagnostics if requested
         let engine = ElectionEngine::new();
-        let result = engine.execute(&config, &election_data)?;
+        let result = engine.execute_with_diagnostics(&config, &election_data, self.diagnostics)?;
 
         // Output results
         self.output_result(&result)?;
@@ -150,6 +177,33 @@ impl RunCommand {
         }
 
         Ok(())
+    }
+
+    /// Parse an override string in format "account_id=stake"
+    fn parse_override(&self, override_str: &str, override_type: &str) -> Result<(String, u128), ElectionError> {
+        let parts: Vec<&str> = override_str.split('=').collect();
+        if parts.len() != 2 {
+            return Err(ElectionError::ValidationError {
+                message: format!(
+                    "Invalid {} stake override format: '{}'. Expected format: account_id=stake",
+                    override_type, override_str
+                ),
+                field: Some(format!("override_{}_stake", override_type)),
+            });
+        }
+        
+        let account_id = parts[0].trim().to_string();
+        let stake_str = parts[1].trim();
+        
+        let stake = stake_str.parse::<u128>().map_err(|e| ElectionError::ValidationError {
+            message: format!(
+                "Invalid stake value '{}' in {} override: {}",
+                stake_str, override_type, e
+            ),
+            field: Some(format!("override_{}_stake", override_type)),
+        })?;
+        
+        Ok((account_id, stake))
     }
 
     /// Format result as human-readable text

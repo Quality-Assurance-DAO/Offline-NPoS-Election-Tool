@@ -66,9 +66,37 @@ impl ElectionConfiguration {
         // Active set size must be positive
         if self.active_set_size == 0 {
             return Err(ElectionError::ValidationError {
-                message: "Active set size must be positive".to_string(),
+                message: format!(
+                    "Active set size must be positive, but got {}. Please specify a value greater than 0.",
+                    self.active_set_size
+                ),
                 field: Some("active_set_size".to_string()),
             });
+        }
+
+        // Validate overrides if present
+        if let Some(ref overrides) = self.overrides {
+            // Check for negative stake values in overrides
+            for (account_id, stake) in &overrides.candidate_stakes {
+                if *stake == 0 && account_id.is_empty() {
+                    return Err(ElectionError::ValidationError {
+                        message: format!(
+                            "Invalid candidate stake override: account_id cannot be empty"
+                        ),
+                        field: Some("overrides.candidate_stakes".to_string()),
+                    });
+                }
+            }
+            for (account_id, stake) in &overrides.nominator_stakes {
+                if account_id.is_empty() {
+                    return Err(ElectionError::ValidationError {
+                        message: format!(
+                            "Invalid nominator stake override: account_id cannot be empty"
+                        ),
+                        field: Some("overrides.nominator_stakes".to_string()),
+                    });
+                }
+            }
         }
 
         Ok(())

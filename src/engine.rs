@@ -2,6 +2,7 @@
 
 use crate::algorithms::trait_def::ElectionAlgorithm;
 use crate::algorithms::sequential_phragmen::SequentialPhragmen;
+use crate::diagnostics::explainer::DiagnosticsGenerator;
 use crate::error::ElectionError;
 use crate::models::election_config::ElectionConfiguration;
 use crate::models::election_data::ElectionData;
@@ -22,6 +23,16 @@ impl ElectionEngine {
         &self,
         config: &ElectionConfiguration,
         data: &ElectionData,
+    ) -> Result<ElectionResult, ElectionError> {
+        self.execute_with_diagnostics(config, data, false)
+    }
+
+    /// Execute an election with optional diagnostics generation
+    pub fn execute_with_diagnostics(
+        &self,
+        config: &ElectionConfiguration,
+        data: &ElectionData,
+        generate_diagnostics: bool,
     ) -> Result<ElectionResult, ElectionError> {
         // Validate election data
         data.validate()?;
@@ -62,6 +73,21 @@ impl ElectionEngine {
 
         // Validate result against adjusted config
         self.validate_result(&result, &adjusted_config)?;
+
+        // Generate diagnostics if requested
+        let result = if generate_diagnostics {
+            let diagnostics_gen = DiagnosticsGenerator::new();
+            match diagnostics_gen.generate(&result, &modified_data) {
+                Ok(diagnostics) => result.with_diagnostics(diagnostics),
+                Err(e) => {
+                    // Log error but don't fail the election
+                    eprintln!("Warning: Failed to generate diagnostics: {}", e);
+                    result
+                }
+            }
+        } else {
+            result
+        };
 
         Ok(result)
     }

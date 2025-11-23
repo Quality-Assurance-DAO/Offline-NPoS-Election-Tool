@@ -1,5 +1,6 @@
 //! Election result model
 
+use crate::diagnostics::models::Diagnostics;
 use crate::types::AlgorithmType;
 use serde::{Deserialize, Serialize};
 
@@ -16,6 +17,9 @@ pub struct ElectionResult {
     pub algorithm_used: AlgorithmType,
     /// Execution metadata (timing, block number, etc.)
     pub execution_metadata: ExecutionMetadata,
+    /// Optional diagnostics explaining the results
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diagnostics: Option<Diagnostics>,
 }
 
 /// Validator that was selected in the election
@@ -77,6 +81,7 @@ impl ElectionResult {
                 execution_timestamp: None,
                 data_source: None,
             },
+            diagnostics: None,
         }
     }
 
@@ -98,6 +103,53 @@ impl ElectionResult {
     /// Get algorithm used
     pub fn algorithm_used(&self) -> AlgorithmType {
         self.algorithm_used
+    }
+
+    /// Set diagnostics for this result
+    pub fn with_diagnostics(mut self, diagnostics: Diagnostics) -> Self {
+        self.diagnostics = Some(diagnostics);
+        self
+    }
+
+    /// Get diagnostics if available
+    pub fn diagnostics(&self) -> Option<&Diagnostics> {
+        self.diagnostics.as_ref()
+    }
+
+    /// Get the number of selected validators
+    pub fn validator_count(&self) -> usize {
+        self.selected_validators.len()
+    }
+
+    /// Get validator by rank (1-indexed)
+    pub fn validator_by_rank(&self, rank: u32) -> Option<&SelectedValidator> {
+        self.selected_validators
+            .iter()
+            .find(|v| v.rank == Some(rank))
+    }
+
+    /// Get all stake allocations for a specific validator
+    pub fn allocations_for_validator(&self, validator_id: &str) -> Vec<&StakeAllocation> {
+        self.stake_distribution
+            .iter()
+            .filter(|alloc| alloc.validator_id == validator_id)
+            .collect()
+    }
+
+    /// Get all stake allocations for a specific nominator
+    pub fn allocations_for_nominator(&self, nominator_id: &str) -> Vec<&StakeAllocation> {
+        self.stake_distribution
+            .iter()
+            .filter(|alloc| alloc.nominator_id == nominator_id)
+            .collect()
+    }
+
+    /// Get the total stake allocated to a specific validator
+    pub fn total_stake_for_validator(&self, validator_id: &str) -> u128 {
+        self.allocations_for_validator(validator_id)
+            .iter()
+            .map(|alloc| alloc.amount)
+            .sum()
     }
 
     /// Convert result to JSON string

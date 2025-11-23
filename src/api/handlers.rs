@@ -1,6 +1,7 @@
 //! REST API request handlers
 
 use crate::api::models::{DataSource, ElectionRequest, ElectionResponse, ErrorResponse};
+use crate::diagnostics::explainer::DiagnosticsGenerator;
 use crate::engine::ElectionEngine;
 use crate::error::ElectionError;
 use crate::input::rpc::RpcLoader;
@@ -17,9 +18,16 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
+/// Stored election data including result and original data for diagnostics
+#[derive(Clone)]
+struct StoredElection {
+    response: ElectionResponse,
+    original_data: ElectionData,
+}
+
 /// In-memory storage for election results (for demo purposes)
 /// In production, this would be replaced with a database
-type ElectionStorage = Arc<RwLock<HashMap<String, ElectionResponse>>>;
+type ElectionStorage = Arc<RwLock<HashMap<String, StoredElection>>>;
 
 /// Handler state containing shared resources
 #[derive(Clone)]
@@ -91,8 +99,11 @@ pub async fn run_election(
         execution_time_ms: Some(execution_time_ms),
     };
 
-    // Store result (for demo purposes)
-    state.storage.write().await.insert(election_id.clone(), response.clone());
+    // Store result with original data for diagnostics generation
+    state.storage.write().await.insert(election_id.clone(), StoredElection {
+        response: response.clone(),
+        original_data: election_data.clone(),
+    });
 
     Ok(Json(response))
 }
@@ -104,7 +115,7 @@ pub async fn get_election_results(
 ) -> Result<Json<ElectionResponse>, ApiError> {
     let storage = state.storage.read().await;
     storage.get(&election_id)
-        .cloned()
+        .map(|stored| stored.response.clone())
         .ok_or_else(|| ApiError::NotFound(format!("Election not found: {}", election_id)))
         .map(Json)
 }
@@ -115,20 +126,19 @@ pub async fn get_election_diagnostics(
     Path(election_id): Path<String>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let storage = state.storage.read().await;
-    let election = storage.get(&election_id)
+    let stored = storage.get(&election_id)
         .ok_or_else(|| ApiError::NotFound(format!("Election not found: {}", election_id)))?;
 
-    // For now, return basic diagnostics
-    // Full diagnostics implementation would go in the diagnostics module
-    let diagnostics = serde_json::json!({
-        "election_id": election_id,
-        "algorithm": election.result.algorithm_used,
-        "selected_validators_count": election.result.selected_validators.len(),
-        "total_stake": election.result.total_stake.to_string(),
-        "note": "Full diagnostics implementation pending"
-    });
+    // Generate diagnostics from stored result and original data
+    let diagnostics_gen = DiagnosticsGenerator::new();
+    let diagnostics = diagnostics_gen.generate(&stored.response.result, &stored.original_data)
+        .map_err(|e| ApiError::Internal(format!("Failed to generate diagnostics: {}", e)))?;
 
-    Ok(Json(diagnostics))
+    // Convert diagnostics to JSON
+    let diagnostics_json = serde_json::to_value(&diagnostics)
+        .map_err(|e| ApiError::Internal(format!("Failed to serialize diagnostics: {}", e)))?;
+
+    Ok(Json(diagnostics_json))
 }
 
 /// Load election data from the specified data source

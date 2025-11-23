@@ -70,7 +70,10 @@ impl ElectionData {
         // Must contain at least one validator candidate
         if self.candidates.is_empty() {
             return Err(ElectionError::ValidationError {
-                message: "Election data must contain at least one validator candidate".to_string(),
+                message: format!(
+                    "Election data must contain at least one validator candidate, but found {}. Please add at least one candidate.",
+                    self.candidates.len()
+                ),
                 field: Some("candidates".to_string()),
             });
         }
@@ -105,10 +108,16 @@ impl ElectionData {
         for nominator in &self.nominators {
             for target in &nominator.targets {
                 if !candidate_id_set.contains(target) {
+                    let available_candidates: Vec<&String> = self.candidates.iter().take(5).map(|c| &c.account_id).collect();
+                    let candidate_list = if self.candidates.len() > 5 {
+                        format!("{} (and {} more)", available_candidates.join(", "), self.candidates.len() - 5)
+                    } else {
+                        available_candidates.join(", ")
+                    };
                     return Err(ElectionError::ValidationError {
                         message: format!(
-                            "Nominator {} votes for non-existent candidate: {}",
-                            nominator.account_id, target
+                            "Nominator '{}' votes for non-existent candidate '{}'. Available candidates: {}",
+                            nominator.account_id, target, candidate_list
                         ),
                         field: Some("nominators.targets".to_string()),
                     });
@@ -127,6 +136,39 @@ impl ElectionData {
     /// Get reference to nominators
     pub fn nominators(&self) -> &[Nominator] {
         &self.nominators
+    }
+
+    /// Load election data from an RPC endpoint
+    /// 
+    /// # Arguments
+    /// * `url` - RPC endpoint URL
+    /// * `block_number` - Optional block number to snapshot state (None for latest)
+    /// 
+    /// # Returns
+    /// Returns `Ok(ElectionData)` if successful, or `Err` if RPC call fails
+    /// 
+    /// # Example
+    /// ```no_run
+    /// use offline_election::ElectionData;
+    /// 
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let data = ElectionData::from_rpc(
+    ///     "https://rpc.polkadot.io",
+    ///     Some(10000000)
+    /// ).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn from_rpc(
+        url: &str,
+        block_number: Option<u64>,
+    ) -> Result<Self, ElectionError> {
+        let loader = crate::input::rpc::RpcLoader::new(url)?;
+        if let Some(block) = block_number {
+            loader.load_at_block(block).await
+        } else {
+            loader.load_latest().await
+        }
     }
 }
 

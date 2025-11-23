@@ -1,5 +1,4 @@
 //! Diagnostics data models
-//! Will be implemented in Phase 6 (T096)
 
 use serde::{Deserialize, Serialize};
 
