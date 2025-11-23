@@ -1,0 +1,155 @@
+//! CLI commands implementation
+
+use crate::error::ElectionError;
+use crate::engine::ElectionEngine;
+use crate::models::election_config::ElectionConfiguration;
+use crate::models::election_data::ElectionData;
+use crate::types::AlgorithmType;
+use clap::Parser;
+use std::path::PathBuf;
+
+/// Run command for executing elections
+#[derive(Parser)]
+#[command(name = "run")]
+#[command(about = "Run an election simulation")]
+pub struct RunCommand {
+    /// Election algorithm to use (sequential-phragmen, parallel-phragmen, multi-phase)
+    #[arg(long)]
+    pub algorithm: String,
+
+    /// Number of validators to select
+    #[arg(long)]
+    pub active_set_size: u32,
+
+    /// RPC URL for fetching on-chain data
+    #[arg(long, conflicts_with_all = ["input_file", "synthetic"])]
+    pub rpc_url: Option<String>,
+
+    /// Block number for RPC snapshot
+    #[arg(long, requires = "rpc_url")]
+    pub block_number: Option<u64>,
+
+    /// Input file path (JSON format)
+    #[arg(long, conflicts_with_all = ["rpc_url", "synthetic"])]
+    pub input_file: Option<PathBuf>,
+
+    /// Use synthetic data (requires additional flags)
+    #[arg(long, conflicts_with_all = ["rpc_url", "input_file"])]
+    pub synthetic: bool,
+
+    /// Include detailed diagnostics in output
+    #[arg(long)]
+    pub diagnostics: bool,
+
+    /// Output file path (default: stdout)
+    #[arg(long)]
+    pub output_file: Option<PathBuf>,
+
+    /// Output format: json or human-readable
+    #[arg(long, default_value = "json")]
+    pub format: String,
+}
+
+impl RunCommand {
+    /// Execute the run command
+    pub fn execute(&self) -> Result<(), ElectionError> {
+        // Load election data
+        let election_data = self.load_data()?;
+
+        // Parse algorithm type
+        let algorithm = self.algorithm.parse::<AlgorithmType>()
+            .map_err(|e| ElectionError::ValidationError {
+                message: format!("Invalid algorithm: {}", e),
+                field: Some("algorithm".to_string()),
+            })?;
+
+        // Create election configuration
+        let config = ElectionConfiguration::new()
+            .algorithm(algorithm)
+            .active_set_size(self.active_set_size)
+            .block_number(self.block_number)
+            .build()?;
+
+        // Execute election
+        let engine = ElectionEngine::new();
+        let result = engine.execute(&config, &election_data)?;
+
+        // Output results
+        self.output_result(&result)?;
+
+        Ok(())
+    }
+
+    /// Load election data from the specified source
+    fn load_data(&self) -> Result<ElectionData, ElectionError> {
+        if let Some(ref rpc_url) = self.rpc_url {
+            // Load from RPC (async - would need tokio runtime)
+            // For now, return error indicating async support needed
+            return Err(ElectionError::RpcError {
+                message: "RPC loading requires async runtime - use async version or implement sync wrapper".to_string(),
+                url: rpc_url.clone(),
+            });
+        } else if let Some(ref input_file) = self.input_file {
+            // Load from JSON file
+            let json_loader = crate::input::json::JsonLoader::new();
+            json_loader.load_from_file(input_file.clone())
+        } else if self.synthetic {
+            // Create synthetic data
+            Err(ElectionError::InvalidData {
+                message: "Synthetic data creation not yet implemented".to_string(),
+            })
+        } else {
+            Err(ElectionError::ValidationError {
+                message: "Must specify one of: --rpc-url, --input-file, or --synthetic".to_string(),
+                field: None,
+            })
+        }
+    }
+
+    /// Output election results
+    fn output_result(&self, result: &crate::models::election_result::ElectionResult) -> Result<(), ElectionError> {
+        let output = if self.format == "human-readable" {
+            self.format_human_readable(result)?
+        } else {
+            result.to_json()?
+        };
+
+        if let Some(ref output_file) = self.output_file {
+            std::fs::write(output_file, output).map_err(|e| ElectionError::FileError {
+                message: format!("Failed to write output file: {}", e),
+                path: output_file.clone(),
+            })?;
+        } else {
+            println!("{}", output);
+        }
+
+        Ok(())
+    }
+
+    /// Format result as human-readable text
+    fn format_human_readable(&self, result: &crate::models::election_result::ElectionResult) -> Result<String, ElectionError> {
+        let mut output = String::new();
+        output.push_str("Election Results\n");
+        output.push_str("================\n");
+        output.push_str(&format!("Algorithm: {:?}\n", result.algorithm_used));
+        output.push_str(&format!("Total Stake: {}\n", result.total_stake));
+        output.push_str(&format!("Selected Validators: {}\n\n", result.selected_validators.len()));
+
+        output.push_str("Selected Validators:\n");
+        for (idx, validator) in result.selected_validators.iter().take(10).enumerate() {
+            output.push_str(&format!(
+                "{}. {} - Stake: {}, Nominators: {}\n",
+                idx + 1,
+                validator.account_id,
+                validator.total_backing_stake,
+                validator.nominator_count
+            ));
+        }
+
+        if result.selected_validators.len() > 10 {
+            output.push_str(&format!("... and {} more\n", result.selected_validators.len() - 10));
+        }
+
+        Ok(output)
+    }
+}
