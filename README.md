@@ -1,16 +1,59 @@
 # Offline NPoS Election Tool
 
-A Rust-based offline NPoS (Nominated Proof of Stake) election tool that exactly mirrors the election logic of any Substrate chain. This tool allows you to run election simulations offline, compare different election algorithms, and analyze election outcomes.
+A Rust-based offline **NPoS (Nominated Proof of Stake)** election tool that exactly mirrors the election logic of any Substrate chain. This tool allows you to run election simulations offline, compare different election algorithms, and analyze election outcomes.
+
+## Project Overview
+
+### What are NPoS Elections?
+
+**NPoS (Nominated Proof of Stake)** is the consensus mechanism used by Polkadot and many Substrate-based chains to select validators. In NPoS:
+
+- **Validators** are nodes that produce blocks and validate transactions
+- **Nominators** are token holders who stake tokens to back validators they trust
+- **Elections** run periodically (typically every era, ~24 hours) to select a fixed number of validators (the **active set**) from a pool of candidates
+- **Stake distribution** determines which validators are selected - validators with more stake backing are more likely to be selected
+
+### Why Offline Simulation is Valuable
+
+Offline election simulation enables you to:
+
+- **Test scenarios** before they happen on-chain
+- **Analyze outcomes** without waiting for the next election
+- **Compare algorithms** to understand how different election methods affect results
+- **Explore what-if scenarios** by modifying stake distributions or election parameters
+- **Learn and educate** about how NPoS elections work without interacting with live chains
+
+This tool provides **bit-for-bit accuracy** with on-chain elections by using the same Substrate crates and algorithms used by live chains.
+
+For a comprehensive overview of the Polkadot ecosystem, validators, nominators, staking, and NPoS elections, see [Polkadot Ecosystem Overview](docs/polkadot/ecosystem-overview.md).
 
 ## Features
 
-- **Multiple Election Algorithms**: Support for sequential phragmen, parallel phragmen, and multi-phase algorithms
-- **Flexible Data Sources**: Fetch data from Substrate RPC endpoints, load from JSON files, or create synthetic data
-- **Parameter Overrides**: Modify election parameters (active set size, stakes, voting edges) without changing source data
-- **Detailed Diagnostics**: Get explanations for why validators were selected or not selected
+- **Multiple Election Algorithms**: Support for **Sequential Phragmen**, **Parallel Phragmen**, and **Multi-phase** algorithms
+- **Flexible Data Sources**: Fetch data from **Substrate RPC** endpoints, load from JSON files, or create synthetic data
+- **Parameter Overrides**: Modify election parameters (**active set** size, stakes, voting edges) without changing source data
+- **Detailed Diagnostics**: Get explanations for why **validators** were selected or not selected
 - **Multiple Interfaces**: Use via CLI, REST API, or programmatic library API
-- **Bit-for-Bit Accuracy**: Produces identical results to on-chain elections using Substrate's native crates
-- **Performance Testing**: Includes synthetic benchmarks for large-scale scenarios (see [PERFORMANCE_BENCHMARKS.md](PERFORMANCE_BENCHMARKS.md) for details)
+- **Bit-for-Bit Accuracy**: Produces identical results to on-chain elections using **Substrate's** native crates
+- **Performance Testing**: Includes synthetic benchmarks for large-scale scenarios (see [Performance Benchmarks](docs/guides/performance.md) for details)
+
+### Key Terms
+
+- **NPoS (Nominated Proof of Stake)**: The consensus mechanism used by Polkadot to select validators based on stake backing
+- **Sequential Phragmen**: A standard election algorithm that selects validators sequentially based on stake distribution
+- **Parallel Phragmen**: An alternative election algorithm that can produce different results than sequential phragmen
+- **Multi-phase**: A multi-phase election process with signed/unsigned submissions and fallback phases
+- **Active Set**: The fixed number of validators selected to participate in consensus (typically ~297 for Polkadot mainnet)
+- **Validator**: A node that produces blocks and validates transactions on the network
+- **Nominator**: A token holder who stakes tokens to back validators
+- **Stake**: Tokens locked to participate in network security and validator selection
+- **Archive Node**: An RPC node that maintains complete historical state (required for historical block queries)
+- **RPC (Remote Procedure Call)**: A protocol for querying blockchain data from remote nodes
+- **Substrate**: A blockchain framework used by Polkadot and many other chains
+- **SS58**: An encoding format used for Polkadot account addresses
+- **Bit-for-bit accuracy**: Producing identical results to on-chain elections using the same algorithms and data
+
+For comprehensive definitions of all technical terms, see the [Glossary](docs/reference/glossary.md).
 
 ## Installation
 
@@ -30,6 +73,71 @@ cargo build --release
 The binary will be available at `target/release/offline-election` (or `offline-election.exe` on Windows).
 
 ## Quick Start
+
+Get started with your first election simulation in minutes:
+
+### Step 1: Build the Tool
+
+```bash
+git clone <repository-url>
+cd offline-election-tool
+cargo build --release
+```
+
+### Step 2: Run Your First Election
+
+The simplest way to get started is to run an election using live Polkadot data:
+
+```bash
+# Run election from latest block
+offline-election run \
+  --algorithm sequential-phragmen \
+  --active-set-size 100 \
+  --rpc-url https://rpc.polkadot.io
+```
+
+This will:
+1. Connect to the Polkadot RPC endpoint
+2. Fetch current validator and nominator data
+3. Run a **Sequential Phragmen** election to select 100 validators
+4. Output the results in JSON format
+
+### Step 3: Explore Different Algorithms
+
+Try running the same data through different algorithms to compare results:
+
+```bash
+# Sequential Phragmen
+offline-election run --algorithm sequential-phragmen --active-set-size 100 --rpc-url https://rpc.polkadot.io
+
+# Parallel Phragmen
+offline-election run --algorithm parallel-phragmen --active-set-size 100 --rpc-url https://rpc.polkadot.io
+
+# Multi-phase
+offline-election run --algorithm multi-phase --active-set-size 100 --rpc-url https://rpc.polkadot.io
+```
+
+### Step 4: Get Detailed Diagnostics
+
+Add the `--diagnostics` flag to understand why validators were selected or not:
+
+```bash
+offline-election run \
+  --algorithm sequential-phragmen \
+  --active-set-size 100 \
+  --rpc-url https://rpc.polkadot.io \
+  --diagnostics
+```
+
+### Next Steps
+
+- **Learn more**: Read the [Polkadot Ecosystem Overview](docs/polkadot/ecosystem-overview.md) to understand validators, nominators, and staking
+- **Explore guides**: Check out [Algorithm Guide](docs/guides/algorithms.md) and [RPC Usage Guide](docs/guides/rpc-usage.md)
+- **Try examples**: See the [Examples](#examples) section below for more use cases
+
+---
+
+## Detailed Usage Examples
 
 ### Run Election from RPC (On-Chain Data)
 
@@ -585,15 +693,102 @@ Substrate chains can implement custom election providers via the `ElectionProvid
 
 See [ALGORITHM_EXTENSIBILITY.md](ALGORITHM_EXTENSIBILITY.md) for detailed documentation on adding new algorithms.
 
+## Navigation
+
+### For Newcomers
+
+- **Start here**: [Quick Start](#quick-start) - Run your first election in minutes
+- **Understand the ecosystem**: [Polkadot Ecosystem Overview](docs/polkadot/ecosystem-overview.md) - Learn about validators, nominators, staking, and NPoS elections
+- **Learn key terms**: [Glossary](docs/reference/glossary.md) - Definitions of all technical terms
+- **See examples**: [Examples](#examples) - Common use cases and workflows
+
+### For Contributors
+
+- **API Documentation**: 
+  - [REST API](docs/api/rest-api.md) - REST API server documentation
+  - [Programmatic API](docs/api/programmatic-api.md) - Library API documentation
+- **Guides**:
+  - [Algorithm Guide](docs/guides/algorithms.md) - How to add custom election algorithms
+  - [RPC Usage Guide](docs/guides/rpc-usage.md) - Using RPC endpoints and archive nodes
+  - [Performance Guide](docs/guides/performance.md) - Performance benchmarks and optimization
+- **Testing**: [Testing Overview](docs/testing/overview.md) - Running tests and understanding results
+
+### For Maintainers
+
+- **Reference Documentation**:
+  - [RFP Compliance](docs/reference/rfp-compliance.md) - RFP compliance assessment
+  - [Glossary](docs/reference/glossary.md) - Technical terms glossary
+- **Project Structure**: [Project Structure](#project-structure) - Codebase organization
+- **Feature Specifications**: [Feature Specifications](specs/) - Detailed feature specs and plans
+
+## How This Tool Fits in the Polkadot Ecosystem
+
+### Tool's Role
+
+The **Offline NPoS Election Tool** enables offline simulation of NPoS elections without running a full node or waiting for on-chain elections. This provides:
+
+- **Testing**: Test election scenarios before they happen on-chain
+- **Analysis**: Analyze election outcomes and stake distributions
+- **What-if scenarios**: Explore how changes in stake or nominations would affect election results
+- **Algorithm comparison**: Compare different election algorithms (sequential phragmen, parallel phragmen, multi-phase)
+- **Education**: Learn how NPoS elections work without interacting with live chains
+
+### Dependencies
+
+This tool uses Substrate's native election crates for accuracy:
+
+- **`sp-npos-elections`**: Core election algorithms (sequential phragmen, parallel phragmen)
+- **`frame-election-provider-support`**: Election provider trait and utilities
+- **`pallet-election-provider-multi-phase`**: Multi-phase election implementation
+
+Using these crates ensures **bit-for-bit accuracy** with on-chain elections.
+
+### Interactions
+
+- **RPC Data Fetching**: Fetch election data from live Substrate chains (Polkadot, Kusama, Westend)
+- **Historical Analysis**: Query past election data using archive nodes
+- **Offline Simulation**: Run elections locally without network dependencies
+
+### Use Cases
+
+- **Validator Operators**: Test stake strategies and analyze selection probability
+- **Nominators**: Compare validator selection probabilities and plan nominations
+- **Researchers**: Study election algorithm behavior and analyze historical data
+- **Developers**: Test election logic before deploying to chain
+
+For more details, see the [Polkadot Ecosystem Overview](docs/polkadot/ecosystem-overview.md).
+
 ## Documentation
+
+### User Documentation
+
+- [Polkadot Ecosystem Overview](docs/polkadot/ecosystem-overview.md) - Comprehensive Polkadot ecosystem context
+- [Quick Start Guide](#quick-start) - Get started in minutes
+- [Glossary](docs/reference/glossary.md) - Technical terms definitions
+
+### API Documentation
+
+- [REST API](docs/api/rest-api.md) - REST API server documentation
+- [Programmatic API](docs/api/programmatic-api.md) - Library API documentation
+
+### Guides
+
+- [Algorithm Guide](docs/guides/algorithms.md) - How to add custom election algorithms
+- [RPC Usage Guide](docs/guides/rpc-usage.md) - Using RPC endpoints and archive nodes
+- [Performance Guide](docs/guides/performance.md) - Performance benchmarks and optimization
+- [Testing Overview](docs/testing/overview.md) - Running tests and understanding results
+
+### Reference
+
+- [RFP Compliance](docs/reference/rfp-compliance.md) - RFP compliance assessment
+- [Glossary](docs/reference/glossary.md) - Technical terms glossary
+
+### Feature Specifications
 
 - [Feature Specification](specs/001-offline-npos-election/spec.md)
 - [Implementation Plan](specs/001-offline-npos-election/plan.md)
 - [Data Model](specs/001-offline-npos-election/data-model.md)
 - [Quickstart Guide](specs/001-offline-npos-election/quickstart.md)
-- [Programmatic API](specs/001-offline-npos-election/contracts/programmatic-api.md)
-- [REST API](specs/001-offline-npos-election/contracts/rest-api.yaml)
-- [Algorithm Extensibility Guide](ALGORITHM_EXTENSIBILITY.md) - How to add custom election algorithms
 
 ## License
 
