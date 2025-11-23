@@ -18,6 +18,7 @@ mod test_invalid_account_ids;
 mod test_invalid_voting_targets;
 mod test_maximum_stakes;
 mod test_malformed_json;
+mod test_algorithm_convergence;
 
 pub use test_zero_candidates::*;
 pub use test_zero_nominators::*;
@@ -33,6 +34,7 @@ pub use test_invalid_account_ids::*;
 pub use test_invalid_voting_targets::*;
 pub use test_maximum_stakes::*;
 pub use test_malformed_json::*;
+pub use test_algorithm_convergence::*;
 
 #[cfg(test)]
 mod test_runner {

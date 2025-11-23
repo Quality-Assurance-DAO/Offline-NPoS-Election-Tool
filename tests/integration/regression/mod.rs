@@ -8,9 +8,11 @@ mod test_runner;
 mod test_normal_elections;
 mod test_edge_case_regression;
 mod test_performance_regression;
+mod test_determinism;
 
 pub use test_runner::*;
 pub use test_normal_elections::*;
 pub use test_edge_case_regression::*;
 pub use test_performance_regression::*;
+pub use test_determinism::*;
 
