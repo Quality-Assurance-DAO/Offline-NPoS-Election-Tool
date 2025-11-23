@@ -5,6 +5,16 @@
 **Status**: Draft  
 **Input**: User description: "Build a new Rust-based offline NPoS election tool that exactly mirrors the election logic of any Substrate chain. Refactor the old substrate-debug-kit/offline-election (https://github.com/paritytech/substrate-debug-kit/tree/master/offline-election ) into a modern Rust project with a clean library/CLI architecture, using Substrate's native crates (sp-npos-elections, frame-election-provider-support, pallet-election-provider-multi-phase, parity-scale-codec, and related runtime primitives) to ensure results match on-chain elections bit-for-bit. Implement a modular election engine that supports all election algorithms (sequential phragmen, parallel phragmen, multi-phase), with a trait-based abstraction to swap algorithms at runtime. Add a flexible input layer that can ingest on-chain state via public RPC (no API keys), JSON files, or fully synthetic voters/candidates—including accounts that do not exist or have no bonded stake—with full parameterization such as custom active-set size, custom edges, overrides, and snapshot-at-block functionality. Provide both a robust CLI (using clap) and a fully documented Rust API that exposes election configuration, execution, and results. Include JSON output, an optional REST API server mode, extensive diagnostics (e.g., explain why each validator is selected), deterministic test harnesses, and continuous compatibility with latest Substrate runtimes."
 
+## Clarifications
+
+### Session 2025-01-27
+
+- Q: How should the REST API handle authentication and access control? → A: No authentication required - public API accessible to anyone
+- Q: How should the system handle duplicate account identifiers in input data? → A: Reject duplicates with error - require unique account identifiers
+- Q: What should happen when an election algorithm fails to converge or produces invalid results? → A: Return error with diagnostics explaining the failure reason
+- Q: What should happen when the requested active validator set size exceeds the number of available candidates? → A: Return error indicating insufficient candidates
+- Q: What should happen when election data contains zero validators or zero nominators? → A: Return error indicating invalid election data
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Run Election Simulation from On-Chain State (Priority: P1)
@@ -107,16 +117,16 @@ A team wants to run election simulations through a web service without installin
 
 ### Edge Cases
 
-- What happens when election data contains zero validators or zero nominators?
+- What happens when election data contains zero validators or zero nominators? **Answer**: System returns an error indicating that the election data is invalid, as elections require at least one validator candidate and at least one nominator to produce meaningful results.
 - How does the system handle election data with malformed or invalid account addresses?
-- What happens when the requested active set size is larger than the number of available candidates?
+- What happens when the requested active set size is larger than the number of available candidates? **Answer**: System returns an error indicating that there are insufficient candidates to fill the requested active set size.
 - How does the system handle very large election datasets (thousands of validators, millions of nominators)?
 - What happens when RPC connection times out or returns partial data?
 - How does the system handle election data files with invalid JSON structure?
 - What happens when synthetic candidates have negative stake values?
-- How does the system handle duplicate candidate or nominator entries in input data?
+- How does the system handle duplicate candidate or nominator entries in input data? **Answer**: System rejects duplicate account identifiers with a clear error message, requiring unique identifiers for all candidates and nominators.
 - What happens when voting edges reference candidates that don't exist in the candidate set?
-- How does the system handle election algorithms that fail to converge or produce invalid results?
+- How does the system handle election algorithms that fail to converge or produce invalid results? **Answer**: System returns an error with detailed diagnostics explaining why the algorithm failed to converge or why results are invalid, allowing users to understand and address the issue.
 
 ## Requirements *(mandatory)*
 
@@ -136,12 +146,17 @@ A team wants to run election simulations through a web service without installin
 - **FR-012**: System MUST provide a programmatic API for running elections from other applications
 - **FR-013**: System MUST output election results in JSON format
 - **FR-014**: System MUST provide an optional REST API server mode for remote access
+- **FR-021**: REST API server MUST operate without authentication requirements - all endpoints are publicly accessible
 - **FR-015**: System MUST provide detailed diagnostics explaining why each validator was selected or not selected
 - **FR-016**: System MUST support deterministic test harnesses that produce consistent results for the same inputs
 - **FR-017**: System MUST maintain compatibility with the latest Substrate runtime versions
 - **FR-018**: System MUST handle election data with accounts that have zero or no bonded stake
 - **FR-019**: System MUST validate input data and provide clear error messages for invalid inputs
 - **FR-020**: System MUST handle RPC connection failures gracefully with informative error messages
+- **FR-022**: System MUST reject election data containing duplicate account identifiers (for candidates or nominators) and return an error indicating which accounts are duplicated
+- **FR-023**: System MUST return an error with detailed diagnostics when an election algorithm fails to converge or produces invalid results, explaining the failure reason to help users understand and address the issue
+- **FR-024**: System MUST return an error when the requested active validator set size exceeds the number of available candidates, clearly indicating the insufficient candidate count
+- **FR-025**: System MUST return an error when election data contains zero validator candidates or zero nominators, indicating that the election data is invalid
 
 ### Key Entities
 
