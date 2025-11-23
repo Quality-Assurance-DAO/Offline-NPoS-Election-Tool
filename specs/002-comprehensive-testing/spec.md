@@ -5,6 +5,16 @@
 **Status**: Draft  
 **Input**: User description: "Enhance tests to accomodate edge cases, very large election inputs, performance for big nominee sets. Incorporate "real-world" chain snapshot tests or regression tests against on‑chain election results."
 
+## Clarifications
+
+### Session 2025-01-27
+
+- Q: How should chain snapshot tests handle RPC endpoint failures (network errors, timeouts, rate limits)? → A: Retry with exponential backoff (up to 3 attempts), then mark test as skipped with reason
+- Q: What output format should performance benchmarks use for reporting and comparison? → A: Structured JSON with timing, memory, and metadata
+- Q: How should chain snapshot test data be stored and structured for reproducibility? → A: JSON files in version-controlled directory with metadata
+- Q: How should simulated election results be compared to on-chain results for accuracy validation? → A: Exact match on selected validators and stake allocations (account IDs and amounts)
+- Q: What does "concurrent election execution" mean for testing purposes (FR-020)? → A: Multiple independent elections run in parallel threads/processes
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Validate Edge Case Handling (Priority: P1)
@@ -65,7 +75,7 @@ A validator operator needs confidence that election simulations match actual on-
 
 **Acceptance Scenarios**:
 
-1. **Given** a historical block number from a public Substrate chain, **When** a user fetches election data and runs a simulation, **Then** the results match the actual on-chain election outcome at that block with 100% accuracy
+1. **Given** a historical block number from a public Substrate chain, **When** a user fetches election data and runs a simulation, **Then** the results match the actual on-chain election outcome at that block with 100% accuracy (exact match on selected validator account IDs and stake allocations)
 2. **Given** multiple historical blocks from different chains, **When** a user runs election simulations, **Then** all results match on-chain outcomes
 3. **Given** election data from a chain snapshot, **When** a user runs simulations with different algorithms, **Then** each algorithm produces results consistent with that algorithm's on-chain behavior
 4. **Given** a chain snapshot with known validator set changes, **When** a user runs a simulation, **Then** the results correctly identify which validators were selected and which were not
@@ -104,12 +114,13 @@ A developer needs to prevent regressions when modifying election algorithms or d
 - What happens when active set size is set to zero or negative values?
 - How does the system handle election data where total stake exceeds u128 maximum value?
 - What happens when RPC snapshot data is incomplete or corrupted?
+- How does the system handle RPC endpoint failures during chain snapshot tests? (Retry with exponential backoff up to 3 attempts, then skip test with reason)
 - How does the system handle election data with candidates that have no nominators voting for them?
 - What happens when election algorithms fail to converge within iteration limits?
 - How does the system handle election data with very small stake values (near zero but not zero)?
 - What happens when JSON files contain extra fields or missing required fields?
 - How does the system handle election data with Unicode characters in account IDs or metadata?
-- What happens when multiple elections are run concurrently on the same dataset?
+- What happens when multiple elections are run concurrently on the same dataset? (Multiple independent elections run in parallel threads/processes)
 
 ## Requirements *(mandatory)*
 
@@ -119,28 +130,29 @@ A developer needs to prevent regressions when modifying election algorithms or d
 - **FR-002**: Test suite MUST include performance tests validating election completion times for datasets with at least 1,000 candidates and 10,000 nominators
 - **FR-003**: Test suite MUST include performance tests validating election completion times for datasets with at least 5,000 candidates and 50,000 nominators
 - **FR-004**: Test suite MUST include tests validating memory usage and stability for large-scale election datasets
-- **FR-005**: Test suite MUST include regression tests using real-world chain snapshots from at least 3 different public Substrate chains
-- **FR-006**: Test suite MUST validate that election results match on-chain outcomes with 100% accuracy for all tested chain snapshots
+- **FR-005**: Test suite MUST include regression tests using real-world chain snapshots from at least 3 different public Substrate chains, stored as JSON files in version-controlled directory with metadata (chain identifier, block number, expected results)
+- **FR-006**: Test suite MUST validate that election results match on-chain outcomes with 100% accuracy for all tested chain snapshots, comparing exact matches on selected validator account IDs and stake allocations (nominator-to-validator amounts)
 - **FR-007**: Test suite MUST include regression tests that detect changes in election results when code is modified
 - **FR-008**: Test suite MUST include edge case tests for malformed input data (invalid JSON, invalid account IDs, missing fields)
 - **FR-009**: Test suite MUST include edge case tests for boundary conditions (zero stakes, maximum stakes, empty voting edges)
 - **FR-010**: Test suite MUST include tests validating algorithm behavior with extreme voting patterns (all nominators vote for all candidates, each nominator votes for one candidate)
 - **FR-011**: Test suite MUST include tests validating error messages are clear and actionable for all failure scenarios
-- **FR-012**: Test suite MUST include performance benchmarks that can be run independently to measure election execution time
+- **FR-012**: Test suite MUST include performance benchmarks that can be run independently to measure election execution time, outputting results in structured JSON format with timing, memory usage, and metadata
 - **FR-013**: Test suite MUST include tests validating that large nominee sets (10,000+ nominators) are processed correctly
 - **FR-014**: Test suite MUST include tests validating stake distribution accuracy for large-scale elections
-- **FR-015**: Test suite MUST include regression tests that preserve historical test fixtures and expected results
+- **FR-015**: Test suite MUST include regression tests that preserve historical test fixtures and expected results, stored as version-controlled JSON files with metadata
 - **FR-016**: Test suite MUST include tests validating RPC snapshot data loading for historical blocks
+- **FR-021**: Test suite MUST handle RPC failures by retrying with exponential backoff (up to 3 attempts), then marking tests as skipped with clear reason if all retries fail
 - **FR-017**: Test suite MUST include tests validating that election results remain deterministic across multiple runs with identical inputs
 - **FR-018**: Test suite MUST include tests validating algorithm convergence for edge cases and large datasets
 - **FR-019**: Test suite MUST include tests validating memory leak detection for long-running test scenarios
-- **FR-020**: Test suite MUST include tests validating concurrent election execution if supported by the system
+- **FR-020**: Test suite MUST include tests validating concurrent election execution if supported by the system (multiple independent elections run in parallel threads/processes)
 
 ### Key Entities
 
 - **Test Fixture**: Represents a specific election dataset (candidates, nominators, configuration) used for testing, including expected results and metadata about the test scenario.
 
-- **Chain Snapshot**: Represents election data captured from a specific block on a real Substrate chain, including the block number, chain identifier, and actual on-chain election results for comparison.
+- **Chain Snapshot**: Represents election data captured from a specific block on a real Substrate chain, stored as JSON files in version-controlled directory with metadata (block number, chain identifier, expected on-chain election results for comparison).
 
 - **Performance Benchmark**: Represents a test that measures execution time, memory usage, or other performance metrics for election execution under specific dataset characteristics.
 
@@ -160,13 +172,13 @@ A developer needs to prevent regressions when modifying election algorithms or d
 
 - **SC-004**: Performance tests demonstrate that elections with 10,000 candidates and 100,000 nominators complete without running out of memory on systems with at least 8GB available RAM
 
-- **SC-005**: Chain snapshot tests validate accuracy against at least 10 historical blocks from at least 3 different public Substrate chains, with 100% result matching
+- **SC-005**: Chain snapshot tests validate accuracy against at least 10 historical blocks from at least 3 different public Substrate chains, with 100% result matching (exact match on selected validator account IDs and stake allocations)
 
 - **SC-006**: Regression test suite includes at least 50 test fixtures with known expected results that can detect result changes
 
 - **SC-007**: All edge case tests provide clear, actionable error messages when failures occur, enabling developers to identify and fix issues quickly
 
-- **SC-008**: Performance benchmarks can be executed independently and produce consistent timing measurements across multiple runs
+- **SC-008**: Performance benchmarks can be executed independently and produce consistent timing measurements across multiple runs, outputting structured JSON with timing, memory usage, and metadata for automated comparison
 
 - **SC-009**: Test suite execution completes in under 10 minutes for all tests including large-scale performance tests
 
@@ -184,12 +196,12 @@ A developer needs to prevent regressions when modifying election algorithms or d
 - Test execution time includes data loading, election execution, and result validation
 - Performance targets are based on typical Substrate network sizes and may need adjustment for extremely large networks
 - Test fixtures can be generated synthetically for edge cases and performance testing
-- Chain snapshot data can be cached locally to avoid repeated RPC calls during test execution
-- Regression test fixtures will be version-controlled alongside code to preserve historical test cases
+- Chain snapshot data is stored as JSON files in version-controlled directory with metadata to ensure reproducibility and avoid repeated RPC calls during test execution
+- Regression test fixtures are stored as version-controlled JSON files alongside code to preserve historical test cases
 
 ## Dependencies
 
-- Access to public Substrate RPC endpoints for chain snapshot data
+- Access to public Substrate RPC endpoints for chain snapshot data (with retry handling for transient failures)
 - Ability to verify historical on-chain election results for accuracy validation
 - Sufficient computational resources for large-scale performance testing
 - Test data generation capabilities for synthetic large-scale datasets
