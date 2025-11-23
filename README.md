@@ -228,6 +228,149 @@ The REST API provides HTTP endpoints for election operations:
 
 See [API_USAGE.md](API_USAGE.md) for detailed API documentation and examples.
 
+## Security and Robustness
+
+### REST API Server Security
+
+**⚠️ Important**: The REST API server is designed for development and testing purposes. For production deployments, additional security measures must be implemented.
+
+#### Current State
+
+The current implementation does **not** include:
+- **Authentication**: All endpoints are publicly accessible without authentication
+- **Rate Limiting**: No protection against request flooding or denial-of-service attacks
+- **Request Size Limits**: No explicit limits on JSON payload size (relies on Axum defaults)
+
+#### Input Validation and Protection
+
+The API includes several layers of input validation:
+
+1. **JSON Deserialization**: Axum automatically validates JSON structure and types using Serde
+2. **Algorithm Validation**: Algorithm strings are validated against allowed values (`sequential-phragmen`, `parallel-phragmen`, `multi-phase`)
+3. **Data Validation**: Election data is validated through the `ElectionData::validate()` method, which checks:
+   - Unique candidate and nominator account IDs
+   - Valid account ID formats (SS58 encoding)
+   - Non-negative stake values
+   - Valid voting edges (nominators can only vote for existing candidates)
+   - Active set size constraints
+4. **Stake Parsing**: Stake values are parsed with error handling to prevent invalid numeric inputs
+5. **RPC URL Validation**: RPC URLs are validated when creating RPC clients
+
+**Malformed Input Handling**:
+- Invalid JSON: Returns `400 Bad Request` with error details
+- Invalid algorithm: Returns `400 Bad Request` with validation error
+- Invalid data structure: Returns `400 Bad Request` with field-specific errors
+- Invalid account IDs: Returns `400 Bad Request` with validation error
+- Invalid stake values: Returns `400 Bad Request` with field-specific error
+
+#### Recommendations for Production Use
+
+**1. Authentication**
+
+Implement authentication before deploying to production:
+
+- **API Keys**: Use API key authentication via custom middleware
+- **Bearer Tokens**: Implement JWT or OAuth2 bearer token authentication
+- **IP Whitelisting**: Restrict access to known IP addresses (if applicable)
+- **Reverse Proxy**: Use a reverse proxy (nginx, Traefik) with authentication
+
+Example with API key middleware (pseudo-code):
+```rust
+// Add API key validation middleware
+let app = Router::new()
+    .route("/elections/run", post(run_election))
+    .layer(axum::middleware::from_fn(validate_api_key))
+    .with_state(state);
+```
+
+**2. Rate Limiting**
+
+Protect against abuse and DoS attacks:
+
+- **Per-IP Rate Limiting**: Limit requests per IP address (e.g., 100 requests/minute)
+- **Per-API-Key Rate Limiting**: Different limits for different API keys
+- **Endpoint-Specific Limits**: Stricter limits on resource-intensive endpoints like `/elections/run`
+- **Consider using**: `tower-ratelimit` or `axum-rate-limit` middleware
+
+Example rate limiting configuration:
+```rust
+// Recommended limits:
+// - /elections/run: 10 requests/minute per IP
+// - /elections/:id/results: 60 requests/minute per IP
+// - /health: 300 requests/minute per IP
+```
+
+**3. Request Size Limits**
+
+Protect against memory exhaustion attacks:
+
+- **JSON Payload Limits**: Set explicit limits on request body size (e.g., 10MB max)
+- **Array Size Limits**: Limit maximum number of candidates/nominators in synthetic data
+- **Configure Axum**: Use `axum::extract::DefaultBodyLimit` middleware
+
+Example:
+```rust
+let app = Router::new()
+    .route("/elections/run", post(run_election))
+    .layer(DefaultBodyLimit::max(10 * 1024 * 1024)) // 10MB limit
+    .with_state(state);
+```
+
+**4. Additional Security Measures**
+
+- **HTTPS/TLS**: Always use HTTPS in production (use reverse proxy or TLS termination)
+- **CORS Configuration**: Configure CORS headers appropriately if serving web clients
+- **Request Timeouts**: Set timeouts for long-running operations
+- **Error Message Sanitization**: Ensure error messages don't leak sensitive information
+- **Logging and Monitoring**: Implement request logging and monitoring for suspicious activity
+- **Resource Limits**: Set memory and CPU limits for the server process
+- **Input Sanitization**: Validate and sanitize RPC URLs to prevent SSRF attacks
+
+**5. Protecting Against Specific Attacks**
+
+- **SSRF (Server-Side Request Forgery)**: Validate RPC URLs against allowlists or block internal IPs
+- **DoS via Large Elections**: Limit `active_set_size` and number of candidates/nominators
+- **Memory Exhaustion**: Set request size limits and resource quotas
+- **JSON Bomb**: Limit nesting depth and array sizes in JSON parsing
+
+**6. Deployment Recommendations**
+
+- **Behind Reverse Proxy**: Deploy behind nginx, Traefik, or similar with authentication
+- **Container Limits**: Use Docker/Kubernetes resource limits
+- **Network Isolation**: Restrict network access to necessary endpoints only
+- **Regular Updates**: Keep dependencies updated for security patches
+
+#### Example Production Setup
+
+```bash
+# Run behind nginx with authentication
+# nginx.conf:
+# - Rate limiting: limit_req_zone
+# - SSL/TLS termination
+# - Basic auth or API key validation
+# - Request size limits: client_max_body_size 10m
+
+# Or use a service mesh (Istio, Linkerd) for:
+# - mTLS
+# - Rate limiting
+# - Authentication policies
+```
+
+#### Development vs Production
+
+**Development/Testing**:
+- Current implementation is sufficient
+- No authentication required
+- Suitable for local testing and CI/CD
+
+**Production**:
+- **Must** implement authentication
+- **Must** implement rate limiting
+- **Must** set request size limits
+- **Must** use HTTPS/TLS
+- **Should** implement monitoring and logging
+- **Should** use reverse proxy with additional security layers
+
 ## Troubleshooting
 
 ### Common Issues

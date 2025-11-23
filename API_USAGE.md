@@ -342,6 +342,80 @@ curl http://localhost:3000/elections/$ELECTION_ID/results | jq
 
 ---
 
+## Security Considerations
+
+### ⚠️ Production Deployment Warning
+
+The REST API server **does not include authentication, rate limiting, or request size limits** by default. These features must be added before deploying to production.
+
+### Current Security Features
+
+**Input Validation**:
+- JSON structure validation (automatic via Serde)
+- Algorithm type validation
+- Account ID format validation (SS58 encoding)
+- Stake value validation (numeric, non-negative)
+- Data integrity checks (unique IDs, valid references)
+- Election configuration validation
+
+**Error Handling**:
+- Malformed JSON returns `400 Bad Request` with error details
+- Invalid input returns `400 Bad Request` with field-specific errors
+- Internal errors return `500 Internal Server Error` without exposing sensitive details
+
+### Required Security Measures for Production
+
+**1. Authentication**
+
+The API currently has no authentication. Implement one of:
+- API key authentication via custom middleware
+- Bearer token (JWT/OAuth2) authentication
+- IP whitelisting (if applicable)
+- Reverse proxy authentication (nginx, Traefik)
+
+**2. Rate Limiting**
+
+Protect against abuse:
+- Per-IP rate limiting (e.g., 100 requests/minute)
+- Per-endpoint limits (stricter on `/elections/run`)
+- Per-API-key limits (if using API keys)
+
+**3. Request Size Limits**
+
+Protect against memory exhaustion:
+- Set maximum JSON payload size (recommended: 10MB)
+- Limit array sizes (candidates/nominators)
+- Configure via Axum middleware: `DefaultBodyLimit::max()`
+
+**4. Additional Recommendations**
+
+- **HTTPS/TLS**: Always use HTTPS in production
+- **CORS**: Configure CORS headers appropriately
+- **SSRF Protection**: Validate RPC URLs (block internal IPs, use allowlists)
+- **Resource Limits**: Set memory/CPU limits for the server process
+- **Monitoring**: Implement logging and monitoring for suspicious activity
+- **Reverse Proxy**: Deploy behind nginx/Traefik with additional security layers
+
+### Example Secure Configuration
+
+```bash
+# Deploy behind reverse proxy with:
+# - SSL/TLS termination
+# - Rate limiting
+# - Authentication
+# - Request size limits
+# - IP filtering
+
+# Or implement middleware in the application:
+# - API key validation
+# - Rate limiting middleware
+# - Request size limits
+```
+
+See the [Security and Robustness](../README.md#security-and-robustness) section in the main README for detailed recommendations.
+
+---
+
 ## Troubleshooting
 
 ### Server won't start
