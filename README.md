@@ -718,7 +718,9 @@ See [Algorithm Guide](docs/guides/algorithms.md) for detailed documentation on a
 - **Reference Documentation**:
   - [RFP Compliance](docs/reference/rfp-compliance.md) - RFP compliance assessment
   - [Glossary](docs/reference/glossary.md) - Technical terms glossary
+  - [Documentation Maintenance Guide](docs/reference/maintenance.md) - How to update documentation
 - **Project Structure**: [Project Structure](#project-structure) - Codebase organization
+- **Documentation Structure**: [Documentation Structure](#documentation-structure) - How documentation is organized
 - **Feature Specifications**: [Feature Specifications](specs/) - Detailed feature specs and plans
 
 ## How This Tool Fits in the Polkadot Ecosystem
@@ -789,6 +791,73 @@ For more details, see the [Polkadot Ecosystem Overview](docs/polkadot/ecosystem-
 - [Implementation Plan](specs/001-offline-npos-election/plan.md)
 - [Data Model](specs/001-offline-npos-election/data-model.md)
 - [Quickstart Guide](specs/001-offline-npos-election/quickstart.md)
+
+## Documentation Structure
+
+This section explains how documentation is organized to help maintainers identify what needs updating when adding new features.
+
+### Organization Pattern
+
+Documentation follows a **hybrid pattern**:
+- **README.md** at root: Entry point with overview, quick start, and navigation
+- **docs/** directory: Detailed documentation organized by topic
+
+### Directory Structure
+
+```
+docs/
+├── api/                    # API documentation
+│   ├── rest-api.md        # REST API server
+│   └── programmatic-api.md # Library API
+├── guides/                 # User guides
+│   ├── algorithms.md      # Algorithm extensibility
+│   ├── performance.md     # Performance benchmarks
+│   └── rpc-usage.md       # RPC endpoints and archive nodes
+├── polkadot/              # Polkadot ecosystem context
+│   └── ecosystem-overview.md
+├── reference/             # Reference material
+│   ├── glossary.md        # Technical terms
+│   ├── maintenance.md    # Documentation maintenance guide
+│   └── rfp-compliance.md  # RFP compliance assessment
+└── testing/               # Testing documentation
+    └── overview.md        # Testing guide and examples
+```
+
+### When Adding a New Feature
+
+When adding a new feature (e.g., a new algorithm), update documentation in this order:
+
+1. **Algorithm Implementation** (`src/algorithms/`)
+   - Update: `docs/guides/algorithms.md` - Add algorithm to list, update examples
+
+2. **API Support**
+   - Update: `docs/api/rest-api.md` - Add REST API examples
+   - Update: `docs/api/programmatic-api.md` - Add programmatic API examples
+
+3. **Testing**
+   - Update: `docs/testing/overview.md` - Add test examples
+   - Update: `tests/README.md` - Add test documentation if needed
+
+4. **Cross-References**
+   - Update: Related guides with cross-references
+   - Update: README.md navigation if needed
+
+5. **Reference Material**
+   - Update: `docs/reference/glossary.md` - Add new terms if needed
+   - Update: `docs/reference/maintenance.md` - Update maintenance guide if structure changes
+
+### Documentation Maintenance Checklist
+
+When updating documentation:
+
+- [ ] Update all affected documentation files
+- [ ] Update cross-references between related docs
+- [ ] Verify all links still work
+- [ ] Update glossary if new terms introduced
+- [ ] Update README.md navigation if structure changes
+- [ ] Ensure examples are current and accurate
+
+For detailed maintenance procedures, see [Documentation Maintenance Guide](docs/reference/maintenance.md).
 
 ## License
 

@@ -309,6 +309,8 @@ cargo test -- --skip slow
 ## Additional Resources
 
 - See [Testing Overview](../docs/testing/overview.md) for detailed test running instructions
+- Review [Test Result Examples](../docs/testing/overview.md#example-test-outputs) for expected output formats
+- See [Understanding Test Results](../docs/testing/overview.md#understanding-test-results) for interpretation guidance
 - See `specs/002-comprehensive-testing/` for test design documents
 - See `specs/002-comprehensive-testing/contracts/` for fixture and benchmark contracts
 

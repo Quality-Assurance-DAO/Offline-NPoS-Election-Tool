@@ -2,6 +2,12 @@
 
 This document explains how to add new election algorithms to the Offline NPoS Election Tool.
 
+**Related Documentation**:
+- [REST API Documentation](../api/rest-api.md) - Using algorithms via REST API
+- [Programmatic API Documentation](../api/programmatic-api.md) - Using algorithms programmatically
+- [Testing Overview](../testing/overview.md) - Testing custom algorithms
+- [RPC Usage Guide](rpc-usage.md) - Fetching election data from RPC endpoints
+
 ## Overview
 
 The tool is designed with extensibility in mind. The architecture uses a trait-based system that makes it straightforward to add new election algorithms without modifying core infrastructure.

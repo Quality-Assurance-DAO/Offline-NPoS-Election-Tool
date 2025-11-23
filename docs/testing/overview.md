@@ -2,6 +2,12 @@
 
 This guide explains how to test the offline election tool, run the test suite, and understand test results.
 
+**Related Documentation**:
+- [REST API Documentation](../api/rest-api.md) - Testing API endpoints
+- [Programmatic API Documentation](../api/programmatic-api.md) - Testing with library API
+- [RPC Usage Guide](../guides/rpc-usage.md) - Testing with RPC data
+- [Performance Guide](../guides/performance.md) - Performance benchmarks
+
 ## Quick Start
 
 ### 1. Build the Tool
@@ -144,6 +150,218 @@ Selected Validators:
   }
 }
 ```
+
+## Understanding Test Results
+
+### Example Test Outputs
+
+#### Successful Test Output (JSON Format)
+
+When a test passes, you'll see output like this:
+
+```json
+{
+  "selected_validators": [
+    {
+      "account_id": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+      "total_backing_stake": 1500000000000,
+      "nominator_count": 3,
+      "rank": 1
+    },
+    {
+      "account_id": "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+      "total_backing_stake": 1200000000000,
+      "nominator_count": 2,
+      "rank": 2
+    }
+  ],
+  "stake_distribution": [
+    {
+      "nominator_id": "5GNJqTPyNqANBkUVMN1LPPrxXnFouWXoe2wNSmmEoLctxiZY",
+      "validator_id": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+      "amount": 500000000000,
+      "proportion": 0.3333333333333333
+    }
+  ],
+  "total_stake": 4000000000000,
+  "algorithm_used": "SequentialPhragmen",
+  "execution_metadata": {
+    "block_number": null,
+    "execution_timestamp": "2025-01-27T12:34:56Z",
+    "data_source": "synthetic"
+  }
+}
+```
+
+**What this indicates**:
+- ✅ Election completed successfully
+- ✅ Selected 2 validators (as requested)
+- ✅ Validators ranked by total backing stake
+- ✅ Stake distribution shows how nominator stakes are allocated
+
+#### Successful Test Output (Human-Readable Format)
+
+```
+Election Results
+================
+Algorithm: SequentialPhragmen
+Total Stake: 4000000000000
+Selected Validators: 2
+
+Selected Validators:
+1. 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY - Stake: 1500000000000, Nominators: 3
+2. 5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty - Stake: 1200000000000, Nominators: 2
+```
+
+**What this indicates**:
+- ✅ Election completed successfully
+- ✅ Top 2 validators selected based on stake backing
+- ✅ Clear ranking and stake information
+
+#### Successful Test Suite Run
+
+When running `cargo test`, successful output looks like:
+
+```
+running 15 tests
+test test_zero_candidates_should_fail ... ok
+test test_single_candidate ... ok
+test test_zero_nominators ... ok
+test test_max_active_set_size ... ok
+...
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+```
+
+**What this indicates**:
+- ✅ All tests passed
+- ✅ No failures or errors
+- ✅ Test suite is healthy
+
+### Success Criteria
+
+A test is considered **passing** when:
+
+1. **Election Execution**
+   - ✅ Election completes without errors
+   - ✅ Number of selected validators matches `active_set_size`
+   - ✅ All selected validators have valid account IDs
+   - ✅ Stake distribution is valid (non-negative, sums correctly)
+
+2. **Test Suite Execution**
+   - ✅ Test completes without panics
+   - ✅ Assertions pass
+   - ✅ No unexpected errors
+   - ✅ Exit code is 0
+
+3. **Output Format**
+   - ✅ JSON output is valid JSON (if using JSON format)
+   - ✅ All required fields are present
+   - ✅ Data types are correct (strings, numbers, arrays)
+
+### Failure Examples
+
+#### Test Failure: Invalid Input
+
+```json
+{
+  "error": "ValidationError",
+  "message": "Election data must contain at least one candidate",
+  "field": "candidates"
+}
+```
+
+**What this indicates**:
+- ❌ Test failed due to invalid input
+- ❌ No candidates provided in election data
+- **Action**: Ensure test data includes at least one candidate
+
+#### Test Failure: Algorithm Error
+
+```
+Error: ElectionError::AlgorithmError { message: "Cannot run election with zero candidates", algorithm: SequentialPhragmen }
+```
+
+**What this indicates**:
+- ❌ Algorithm cannot execute with provided data
+- ❌ Data validation failed
+- **Action**: Check input data validity
+
+#### Test Suite Failure
+
+```
+running 1 test
+test test_zero_candidates_should_fail ... FAILED
+
+failures:
+
+---- test_zero_candidates_should_fail stdout ----
+thread 'test_zero_candidates_should_fail' panicked at 'assertion failed: result.is_err()', src/lib.rs:123:4
+note: run with `RUST_BACKTRACE=1` for a backtrace
+
+failures:
+    test_zero_candidates_should_fail
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out
+```
+
+**What this indicates**:
+- ❌ Test assertion failed
+- ❌ Expected error but got success (or vice versa)
+- **Action**: Review test logic and expected behavior
+
+### Interpreting Results
+
+#### Understanding Validator Selection
+
+- **Rank**: Lower rank = higher priority (rank 1 is highest)
+- **Total Backing Stake**: Sum of validator's own stake + nominator stakes
+- **Nominator Count**: Number of nominators backing this validator
+
+#### Understanding Stake Distribution
+
+- **Amount**: Absolute stake amount allocated to this validator-nominator pair
+- **Proportion**: Fraction of nominator's total stake allocated to this validator
+- **Total**: Sum of all stake amounts should equal total stake
+
+#### Understanding Execution Metadata
+
+- **Block Number**: Block number used for RPC data (null if synthetic/JSON)
+- **Execution Timestamp**: When the election was executed
+- **Data Source**: Source of election data (rpc, json, synthetic)
+
+### Common Test Scenarios
+
+#### Scenario 1: Basic Election Test
+
+**Input**: 3 candidates, 2 nominators, active set size 2
+
+**Expected Output**:
+- 2 validators selected
+- Validators ranked by total backing stake
+- Valid stake distribution
+
+**Success Criteria**: All assertions pass, output format valid
+
+#### Scenario 2: Edge Case Test
+
+**Input**: Single candidate, single nominator, active set size 1
+
+**Expected Output**:
+- 1 validator selected (the only candidate)
+- Valid stake distribution
+
+**Success Criteria**: Election succeeds despite minimal data
+
+#### Scenario 3: Algorithm Comparison Test
+
+**Input**: Same data, different algorithms
+
+**Expected Output**:
+- Different validator selections possible
+- All algorithms complete successfully
+
+**Success Criteria**: All algorithms execute, results may differ
 
 ## Testing Different Scenarios
 

@@ -12,6 +12,12 @@ This guide provides comprehensive documentation for the REST API server, includi
 
 For programmatic library usage in Rust, see [Programmatic API Documentation](programmatic-api.md).
 
+**Related Documentation**:
+- [Programmatic API Documentation](programmatic-api.md) - Library API for Rust code
+- [Algorithm Guide](../guides/algorithms.md) - Understanding election algorithms
+- [RPC Usage Guide](../guides/rpc-usage.md) - Using RPC endpoints for data
+- [Testing Overview](../testing/overview.md) - Testing API endpoints
+
 ## Starting the API Server
 
 ### Basic Usage
