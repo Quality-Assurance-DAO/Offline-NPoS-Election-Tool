@@ -16,20 +16,73 @@ use std::time::Duration;
 /// 
 /// # Returns
 /// ChainSnapshot with election data and expected results
+/// 
+/// # Note
+/// This function fetches election data (candidates and nominators) from the chain.
+/// Expected results (selected validators and stake allocations) need to be fetched
+/// separately by querying the chain's staking pallet state, or can be provided
+/// manually when creating snapshots. For now, expected results are initialized as empty.
 pub async fn fetch_chain_snapshot(
     rpc_endpoint: &str,
     block_number: u64,
 ) -> Result<ChainSnapshot, String> {
-    // Load election data from RPC
-    let _election_data = ElectionData::from_rpc(rpc_endpoint, Some(block_number))
-        .await
-        .map_err(|e| format!("Failed to fetch election data from RPC: {}", e))?;
+    use crate::common::models::{ChainSnapshotMetadata, ChainSnapshot};
+    use offline_election::models::election_result::{ElectionResult, ExecutionMetadata};
+    use offline_election::types::AlgorithmType;
     
-    // TODO: Fetch expected results from chain
-    // For now, create a placeholder snapshot
-    // In a real implementation, this would fetch the actual on-chain election results
+    // Load election data from RPC with retry logic
+    let election_data = retry_with_backoff(
+        || async {
+            ElectionData::from_rpc(rpc_endpoint, Some(block_number)).await
+        },
+        3,
+        Duration::from_secs(1),
+    )
+    .await
+    .map_err(|e| format!("Failed to fetch election data from RPC after retries: {}", e))?;
     
-    Err("Chain snapshot fetching not yet fully implemented".to_string())
+    // Determine chain name from RPC endpoint
+    let chain = if rpc_endpoint.contains("polkadot") {
+        "polkadot"
+    } else if rpc_endpoint.contains("kusama") {
+        "kusama"
+    } else if rpc_endpoint.contains("westend") {
+        "westend"
+    } else {
+        "unknown"
+    };
+    
+    // Create metadata
+    let metadata = ChainSnapshotMetadata {
+        chain: chain.to_string(),
+        block_number,
+        timestamp: Utc::now(),
+        rpc_endpoint: rpc_endpoint.to_string(),
+        expected_validators: Vec::new(), // To be filled by querying chain state
+        expected_stake_allocations: std::collections::HashMap::new(), // To be filled by querying chain state
+    };
+    
+    // Create placeholder expected result
+    // Note: In a full implementation, this would query the chain's staking pallet
+    // to get the actual on-chain election results at this block
+    let expected_result = ElectionResult {
+        selected_validators: Vec::new(),
+        stake_distribution: Vec::new(),
+        total_stake: 0,
+        algorithm_used: AlgorithmType::SequentialPhragmen,
+        execution_metadata: ExecutionMetadata {
+            block_number: Some(block_number),
+            execution_timestamp: None,
+            data_source: Some("chain_snapshot".to_string()),
+        },
+        diagnostics: None,
+    };
+    
+    Ok(ChainSnapshot {
+        metadata,
+        election_data,
+        expected_result,
+    })
 }
 
 /// Save chain snapshot to JSON file
