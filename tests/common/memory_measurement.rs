@@ -99,19 +99,21 @@ impl MemoryMeasurer for LinuxMemoryMeasurer {
     }
 }
 
-/// macOS memory measurer using mach_task_basic_info via libc
+/// macOS memory measurer using mach_task_basic_info via mach2
 #[cfg(target_os = "macos")]
 pub struct MacOSMemoryMeasurer;
 
 #[cfg(target_os = "macos")]
 impl MemoryMeasurer for MacOSMemoryMeasurer {
     fn measure_peak_memory_mb() -> Result<u64, MemoryMeasurementError> {
-        use libc::{mach_task_self, task_info, KERN_SUCCESS};
+        use mach2::task::task_info;
+        use mach2::task_info::{task_info_t, TASK_BASIC_INFO};
+        use mach2::traps::mach_task_self;
+        use mach2::kern_return::KERN_SUCCESS;
+        use mach2::message::mach_msg_type_number_t;
         
         // TASK_BASIC_INFO constant value (from mach/task_info.h)
-        const TASK_BASIC_INFO: u32 = 5;
-        
-        // task_basic_info structure (simplified - we only need virtual_size and resident_size)
+        // Use libc types for the structure since mach2 doesn't provide it
         #[repr(C)]
         struct TaskBasicInfo {
             suspend_count: libc::integer_t,
@@ -123,12 +125,12 @@ impl MemoryMeasurer for MacOSMemoryMeasurer {
         
         unsafe {
             let mut info: TaskBasicInfo = std::mem::zeroed();
-            let mut count = (std::mem::size_of::<TaskBasicInfo>() / std::mem::size_of::<libc::natural_t>()) as libc::mach_msg_type_number_t;
+            let mut count = (std::mem::size_of::<TaskBasicInfo>() / std::mem::size_of::<libc::natural_t>()) as mach_msg_type_number_t;
             
             let result = task_info(
                 mach_task_self(),
                 TASK_BASIC_INFO,
-                &mut info as *mut _ as *mut libc::integer_t,
+                &mut info as *mut _ as task_info_t,
                 &mut count,
             );
             
@@ -148,12 +150,14 @@ impl MemoryMeasurer for MacOSMemoryMeasurer {
     }
     
     fn measure_current_memory_mb() -> Result<u64, MemoryMeasurementError> {
-        use libc::{mach_task_self, task_info, KERN_SUCCESS};
+        use mach2::task::task_info;
+        use mach2::task_info::{task_info_t, TASK_BASIC_INFO};
+        use mach2::traps::mach_task_self;
+        use mach2::kern_return::KERN_SUCCESS;
+        use mach2::message::mach_msg_type_number_t;
         
         // TASK_BASIC_INFO constant value (from mach/task_info.h)
-        const TASK_BASIC_INFO: u32 = 5;
-        
-        // task_basic_info structure (simplified - we only need virtual_size and resident_size)
+        // Use libc types for the structure since mach2 doesn't provide it
         #[repr(C)]
         struct TaskBasicInfo {
             suspend_count: libc::integer_t,
@@ -165,12 +169,12 @@ impl MemoryMeasurer for MacOSMemoryMeasurer {
         
         unsafe {
             let mut info: TaskBasicInfo = std::mem::zeroed();
-            let mut count = (std::mem::size_of::<TaskBasicInfo>() / std::mem::size_of::<libc::natural_t>()) as libc::mach_msg_type_number_t;
+            let mut count = (std::mem::size_of::<TaskBasicInfo>() / std::mem::size_of::<libc::natural_t>()) as mach_msg_type_number_t;
             
             let result = task_info(
                 mach_task_self(),
                 TASK_BASIC_INFO,
-                &mut info as *mut _ as *mut libc::integer_t,
+                &mut info as *mut _ as task_info_t,
                 &mut count,
             );
             
