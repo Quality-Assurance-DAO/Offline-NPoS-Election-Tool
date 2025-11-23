@@ -87,7 +87,7 @@ impl ElectionConfiguration {
                     });
                 }
             }
-            for (account_id, stake) in &overrides.nominator_stakes {
+            for (account_id, _stake) in &overrides.nominator_stakes {
                 if account_id.is_empty() {
                     return Err(ElectionError::ValidationError {
                         message: format!(

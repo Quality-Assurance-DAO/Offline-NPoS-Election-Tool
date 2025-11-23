@@ -230,6 +230,34 @@ impl RunCommand {
             output.push_str(&format!("... and {} more\n", result.selected_validators.len() - 10));
         }
 
+        // Include diagnostics if available
+        if let Some(ref diagnostics) = result.diagnostics {
+            output.push_str("\nDiagnostics\n");
+            output.push_str("===========\n");
+            
+            if !diagnostics.warnings.is_empty() {
+                output.push_str("\nWarnings:\n");
+                for warning in &diagnostics.warnings {
+                    output.push_str(&format!("  - {}\n", warning));
+                }
+            }
+
+            if !diagnostics.validator_explanations.is_empty() {
+                output.push_str("\nValidator Explanations:\n");
+                for explanation in &diagnostics.validator_explanations {
+                    let status = if explanation.selected { "SELECTED" } else { "NOT SELECTED" };
+                    output.push_str(&format!("\n  {} ({})\n", explanation.account_id, status));
+                    output.push_str(&format!("    Reason: {}\n", explanation.reason));
+                    if !explanation.key_factors.is_empty() {
+                        output.push_str("    Key Factors:\n");
+                        for factor in &explanation.key_factors {
+                            output.push_str(&format!("      - {}\n", factor));
+                        }
+                    }
+                }
+            }
+        }
+
         Ok(output)
     }
 }

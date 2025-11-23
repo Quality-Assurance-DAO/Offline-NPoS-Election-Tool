@@ -1,4 +1,7 @@
 //! Election engine for executing elections
+//!
+//! The [`ElectionEngine`] is the main entry point for running election simulations.
+//! It handles algorithm selection, parameter overrides, validation, and result generation.
 
 use crate::algorithms::trait_def::ElectionAlgorithm;
 use crate::algorithms::sequential_phragmen::SequentialPhragmen;
@@ -10,15 +13,68 @@ use crate::models::election_result::ElectionResult;
 use crate::types::AlgorithmType;
 
 /// Election engine for executing elections with various algorithms
+///
+/// The engine coordinates election execution by:
+/// 1. Validating election data and configuration
+/// 2. Applying parameter overrides if specified
+/// 3. Selecting and executing the appropriate algorithm
+/// 4. Validating results
+/// 5. Optionally generating diagnostics
+///
+/// # Example
+///
+/// ```no_run
+/// use offline_election::{ElectionEngine, ElectionConfiguration, ElectionData, AlgorithmType};
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let engine = ElectionEngine::new();
+/// let config = ElectionConfiguration::new()
+///     .algorithm(AlgorithmType::SequentialPhragmen)
+///     .active_set_size(100)
+///     .build()?;
+/// let data = ElectionData::from_rpc("https://rpc.polkadot.io", Some(10000000)).await?;
+///
+/// let result = engine.execute(&config, &data)?;
+/// println!("Selected {} validators", result.validator_count());
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Thread Safety
+///
+/// `ElectionEngine` is `Send + Sync` and can be safely shared across threads.
 pub struct ElectionEngine;
 
 impl ElectionEngine {
     /// Create a new election engine
+    ///
+    /// The engine is stateless and can be reused for multiple elections.
     pub fn new() -> Self {
         Self
     }
 
     /// Execute an election with the given configuration and data
+    ///
+    /// This is the main method for running elections. It validates inputs,
+    /// applies overrides, executes the algorithm, and returns results.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - Election configuration specifying algorithm and parameters
+    /// * `data` - Election data containing candidates and nominators
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(ElectionResult)` on success, or `Err(ElectionError)` if validation
+    /// fails, the algorithm errors, or other issues occur.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if:
+    /// - Election data validation fails (no candidates, duplicate IDs, invalid edges)
+    /// - Configuration validation fails (invalid active set size)
+    /// - Algorithm execution fails
+    /// - Result validation fails
     pub fn execute(
         &self,
         config: &ElectionConfiguration,
@@ -28,6 +84,19 @@ impl ElectionEngine {
     }
 
     /// Execute an election with optional diagnostics generation
+    ///
+    /// Similar to [`execute`](Self::execute), but allows requesting diagnostics
+    /// to be generated and included in the result.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - Election configuration
+    /// * `data` - Election data
+    /// * `generate_diagnostics` - If `true`, generate detailed diagnostics explaining results
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(ElectionResult)` with optional diagnostics if requested.
     pub fn execute_with_diagnostics(
         &self,
         config: &ElectionConfiguration,
