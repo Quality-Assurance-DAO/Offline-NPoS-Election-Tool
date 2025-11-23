@@ -10,6 +10,7 @@ A Rust-based offline NPoS (Nominated Proof of Stake) election tool that exactly 
 - **Detailed Diagnostics**: Get explanations for why validators were selected or not selected
 - **Multiple Interfaces**: Use via CLI, REST API, or programmatic library API
 - **Bit-for-Bit Accuracy**: Produces identical results to on-chain elections using Substrate's native crates
+- **Performance Testing**: Includes synthetic benchmarks for large-scale scenarios (see [PERFORMANCE_BENCHMARKS.md](PERFORMANCE_BENCHMARKS.md) for details)
 
 ## Installation
 
@@ -261,6 +262,7 @@ See [API_USAGE.md](API_USAGE.md) for detailed API documentation and examples.
 - See [API_USAGE.md](API_USAGE.md) for API documentation
 - Check [TESTING.md](TESTING.md) for testing examples
 - **For historical block queries**: See [RPC_ARCHIVE_NODES.md](RPC_ARCHIVE_NODES.md) for archive node requirements and troubleshooting
+- **For performance benchmarks**: See [PERFORMANCE_BENCHMARKS.md](PERFORMANCE_BENCHMARKS.md) for performance testing and large-scale benchmarks
 
 ## Examples
 

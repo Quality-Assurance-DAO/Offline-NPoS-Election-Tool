@@ -78,6 +78,8 @@ Large-scale performance tests validating execution times and memory usage:
 - `test_sparse_voting.rs` - Sparse voting patterns
 - `test_memory_leak.rs` - Memory leak detection (100 consecutive elections)
 
+**Note**: These tests use **synthetic data**. For real-world Polkadot mainnet performance benchmarks, see [PERFORMANCE_BENCHMARKS.md](../PERFORMANCE_BENCHMARKS.md).
+
 **Usage**:
 ```bash
 # Run performance tests (may take a long time)
@@ -91,6 +93,12 @@ cargo test test_large_scale_1k -- --ignored
 ```bash
 cargo bench
 ```
+
+**Performance Documentation**: See [PERFORMANCE_BENCHMARKS.md](../PERFORMANCE_BENCHMARKS.md) for:
+- Current benchmark status
+- How to benchmark with real Polkadot mainnet data
+- Performance characteristics and gaps
+- Recommendations for improvement
 
 ### Regression Tests (`tests/integration/regression/`)
 
